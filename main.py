@@ -36,16 +36,29 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Add CORS middleware for browser access
+# IMPORTANT: CORS middleware must be added BEFORE authentication middleware
+# This ensures OPTIONS requests get CORS headers before auth check
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=[
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost",
+        "http://127.0.0.1",
+        "*"  # Allow all origins in development - remove in production
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600
 )
 
-# Add authentication middleware
+# Add authentication middleware AFTER CORS
 app.middleware("http")(auth_middleware)
 
 
@@ -70,6 +83,19 @@ async def health():
         "rules_engine": "online",
         "ai_layer": "online"
     }
+
+
+# Explicit OPTIONS handler for CORS preflight
+@app.options("/v1/decision")
+async def decision_options():
+    """Handle CORS preflight for decision endpoint."""
+    return {}
+
+
+@app.options("/v1/usage")
+async def usage_options():
+    """Handle CORS preflight for usage endpoint."""
+    return {}
 
 
 @app.get("/v1/pricing")

@@ -130,8 +130,13 @@ async def auth_middleware(request: Request, call_next):
     5. Add rate limit headers to response
     6. Call next middleware/endpoint
     """
+    # CRITICAL FIX: Allow OPTIONS requests (CORS preflight) without authentication
+    if request.method == "OPTIONS":
+        response = await call_next(request)
+        return response
+    
     # Skip authentication for public endpoints
-    public_paths = ["/", "/health", "/docs", "/openapi.json", "/redoc"]
+    public_paths = ["/", "/health", "/docs", "/openapi.json", "/redoc", "/v1/pricing"]
     if request.url.path in public_paths:
         return await call_next(request)
     
