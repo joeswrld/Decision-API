@@ -10,7 +10,15 @@ Architecture:
 
 This is production-ready: defensive, predictable, and testable.
 """
-
+from dotenv import load_dotenv
+import os
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from models import DecisionRequest, DecisionResponse, Decision, Priority
+from dotenv import load_dotenv
+import os
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -22,6 +30,14 @@ from confidence import calculate_confidence, should_apply_confidence_fallback
 from middleware import auth_middleware
 from auth import api_key_store, Tier, TIER_LIMITS
 import logging
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Load Google API Key securely from environment
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    raise ValueError("GOOGLE_API_KEY not found in environment variables")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
