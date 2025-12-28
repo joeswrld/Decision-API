@@ -94,9 +94,10 @@ async def call_ai_api(prompt: str) -> Optional[str]:
         
         genai.configure(api_key=api_key)
         
-        # Use Gemini 1.5 Flash for fast, cost-effective inference
+        # FIXED: Use the correct model name format
+        # Changed from 'gemini-1.5-flash' to 'models/gemini-1.5-flash'
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
+            model_name='models/gemini-1.5-flash',
             generation_config={
                 'temperature': config.AI_TEMPERATURE,
                 'max_output_tokens': config.AI_MAX_TOKENS,

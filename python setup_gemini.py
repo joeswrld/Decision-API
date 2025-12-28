@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Gemini API Key Setup Helper
+Gemini API Key Setup Helper - FIXED VERSION
 Run this to set up your Gemini API key correctly
 """
 
@@ -33,7 +33,7 @@ def create_env_file(api_key):
     """Create or update .env file with API key."""
     content = f"""# Google Gemini API Configuration
 # Get your API key from: https://makersuite.google.com/app/apikey
-GOOGLE_API_KEY={AIzaSyAXvhQiiA0QkppqKyq2ZoxYEmSXwyEyRLY}
+GOOGLE_API_KEY={api_key}
 
 # Optional: Application Settings
 # LOG_LEVEL=INFO
@@ -47,12 +47,14 @@ GOOGLE_API_KEY={AIzaSyAXvhQiiA0QkppqKyq2ZoxYEmSXwyEyRLY}
     print("✅ Created .env file with your API key")
 
 def test_api_key(api_key):
-    """Test if the API key works."""
+    """Test if the API key works - FIXED VERSION."""
     try:
         import google.generativeai as genai
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # FIXED: Use correct model name format
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
         
         # Simple test
         response = model.generate_content("Say 'API key works!'")
@@ -68,9 +70,25 @@ def test_api_key(api_key):
         print(f"❌ API key test failed: {e}")
         return False
 
+def list_available_models(api_key):
+    """List all available Gemini models."""
+    try:
+        import google.generativeai as genai
+        
+        genai.configure(api_key=api_key)
+        
+        print("\n📋 Available Gemini models:")
+        for model in genai.list_models():
+            if 'generateContent' in model.supported_generation_methods:
+                print(f"   ✓ {model.name}")
+        print()
+        
+    except Exception as e:
+        print(f"   Could not list models: {e}")
+
 def main():
     print("=" * 60)
-    print("Gemini API Key Setup Helper")
+    print("Gemini API Key Setup Helper - FIXED VERSION")
     print("=" * 60)
     print()
     
@@ -124,7 +142,8 @@ def main():
         result = test_api_key(api_key)
         
         if result is True:
-            print("✅ API key works!")
+            print("✅ API key works perfectly!")
+            list_available_models(api_key)
         elif result is False:
             print("❌ API key test failed - check if the key is correct")
         else:
@@ -160,11 +179,12 @@ def main():
         
         if test_key:
             print()
-            print("🧪 Testing API key...")
+            print("🧪 Testing API key with FIXED model name...")
             result = test_api_key(test_key)
             
             if result is True:
                 print("✅ API key works perfectly!")
+                list_available_models(test_key)
             elif result is False:
                 print("❌ API key test failed")
                 print()
