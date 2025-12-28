@@ -2,21 +2,25 @@
 Decision Intelligence API - Main Application
 
 Architecture:
-1. Rules run first (catch critical cases)
-2. AI analyzes (advisory layer)
-3. Validation ensures schema (safety net)
-4. Confidence scoring (meta-layer)
+1. Authentication & rate limiting (middleware)
+2. Rules run first (catch critical cases)
+3. AI analyzes (advisory layer)
+4. Validation ensures schema (safety net)
+5. Confidence scoring (meta-layer)
 
 This is production-ready: defensive, predictable, and testable.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from models import DecisionRequest, DecisionResponse, Decision, Priority
 from rules import apply_rules
 from ai_decision import get_ai_decision, get_fallback_decision
 from confidence import calculate_confidence, should_apply_confidence_fallback
+from middleware import auth_middleware
+from auth import api_key_store, Tier, TIER_LIMITS
 import logging
 
 # Configure logging
@@ -26,39 +30,167 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI(
     title="Decision Intelligence API",
-    description="AI-powered customer message triage and decision engine",
-    version="1.0.0"
+    description="AI-powered customer message triage and decision engine with API key authentication",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
+
+# Add CORS middleware for browser access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Add authentication middleware
+app.middleware("http")(auth_middleware)
 
 
 @app.get("/")
 async def root():
-    """Health check endpoint."""
+    """Public endpoint - no authentication required."""
     return {
         "status": "operational",
         "service": "Decision Intelligence API",
-        "version": "1.0.0"
+        "version": "2.0.0",
+        "documentation": "/docs",
+        "authentication": "API key required for /v1/* endpoints"
     }
 
 
 @app.get("/health")
 async def health():
-    """Detailed health check."""
+    """Public health check endpoint."""
     return {
         "status": "healthy",
         "api": "online",
         "rules_engine": "online",
-        "ai_layer": "online"  # In production, ping AI service here
+        "ai_layer": "online"
+    }
+
+
+@app.get("/v1/pricing")
+async def get_pricing():
+    """
+    Public pricing information endpoint.
+    Shows available tiers and their limits.
+    """
+    pricing = []
+    for tier, limits in TIER_LIMITS.items():
+        pricing.append({
+            "tier": tier.value,
+            "price_usd_per_month": limits.price_usd,
+            "limits": {
+                "requests_per_minute": limits.requests_per_minute,
+                "requests_per_day": limits.requests_per_day,
+                "requests_per_month": limits.requests_per_month
+            }
+        })
+    
+    return {
+        "currency": "USD",
+        "tiers": pricing,
+        "notes": [
+            "All tiers include full AI-powered decision analysis",
+            "Overage charges: $0.001 per request beyond monthly limit",
+            "Enterprise tier includes dedicated support and SLA"
+        ]
+    }
+
+
+@app.post("/v1/keys/create")
+async def create_api_key(
+    user_id: str,
+    tier: Tier,
+    email: str,
+    name: str = "Production API Key",
+    is_test: bool = False
+):
+    """
+    Create a new API key.
+    
+    Note: In production, this endpoint should:
+    1. Require admin authentication
+    2. Verify payment/subscription via Stripe
+    3. Store keys in database, not in-memory
+    4. Send key via secure channel (email, dashboard)
+    
+    This is a simplified version for demo purposes.
+    """
+    raw_key = api_key_store.create_key(
+        user_id=user_id,
+        tier=tier,
+        email=email,
+        name=name,
+        is_test=is_test
+    )
+    
+    limits = TIER_LIMITS[tier]
+    
+    return {
+        "api_key": raw_key,  # Only shown once!
+        "tier": tier.value,
+        "limits": {
+            "requests_per_minute": limits.requests_per_minute,
+            "requests_per_day": limits.requests_per_day,
+            "requests_per_month": limits.requests_per_month
+        },
+        "warning": "Save this key securely. It will not be shown again.",
+        "usage": "Set header: Authorization: Bearer " + raw_key
+    }
+
+
+@app.get("/v1/usage")
+async def get_usage(http_request: Request):
+    """
+    Get usage statistics for authenticated API key.
+    Requires authentication.
+    """
+    api_key = http_request.state.api_key
+    limits = TIER_LIMITS[api_key.tier]
+    
+    return {
+        "tier": api_key.tier.value,
+        "usage": {
+            "requests_today": api_key.requests_today,
+            "requests_this_month": api_key.requests_this_month,
+            "last_request_at": api_key.last_request_at.isoformat() if api_key.last_request_at else None
+        },
+        "limits": {
+            "requests_per_day": limits.requests_per_day,
+            "requests_per_month": limits.requests_per_month
+        },
+        "remaining": {
+            "today": max(0, limits.requests_per_day - api_key.requests_today),
+            "this_month": max(0, limits.requests_per_month - api_key.requests_this_month)
+        },
+        "estimated_cost_this_month": {
+            "included_requests": limits.requests_per_month,
+            "overage_requests": max(0, api_key.requests_this_month - limits.requests_per_month),
+            "overage_cost_usd": max(0, api_key.requests_this_month - limits.requests_per_month) * 0.001,
+            "total_cost_usd": limits.price_usd + (max(0, api_key.requests_this_month - limits.requests_per_month) * 0.001)
+        }
     }
 
 
 @app.post("/v1/decision", response_model=DecisionResponse)
-async def make_decision(request: DecisionRequest) -> DecisionResponse:
+async def make_decision(request: DecisionRequest, http_request: Request) -> DecisionResponse:
     """
-    Main decision endpoint.
+    Main decision endpoint - REQUIRES AUTHENTICATION.
+    
+    Authentication:
+        Send API key via: Authorization: Bearer sk_live_xxx
+        Or: X-API-Key: sk_live_xxx
+    
+    Rate Limits:
+        Varies by tier (see /v1/pricing)
+        Headers include: X-RateLimit-* for current usage
     
     Flow:
-    1. Validate input (Pydantic does this automatically)
+    1. Authenticate & rate limit (middleware handles this)
     2. Apply rule engine (terminal rules skip AI)
     3. Call AI for nuanced analysis (if needed)
     4. Merge rule + AI decisions (rules can override)
@@ -67,12 +199,22 @@ async def make_decision(request: DecisionRequest) -> DecisionResponse:
     7. Return validated response
     
     Errors:
+    - 401: Authentication failed (invalid/missing API key)
+    - 429: Rate limit exceeded (see Retry-After header)
     - 422: Invalid input schema
     - 500: Internal processing error (with safe fallback)
     """
     
+    # Get authenticated API key from request state (set by middleware)
+    api_key = http_request.state.api_key
+    
     try:
-        logger.info(f"Processing decision request: plan={request.user_plan.value}, channel={request.channel.value}")
+        logger.info(
+            f"Processing decision request: "
+            f"plan={request.user_plan.value}, "
+            f"channel={request.channel.value}, "
+            f"tier={api_key.tier.value}"
+        )
         
         # STEP 1: Apply rule engine
         terminal_rule, all_rules = apply_rules(request)

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Intelligence API - Browser Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-height: 400px;
+        }
+
+        .decision-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .decision-ignore { background: #f3f4f6; color: #6b7280; }
+        .decision-standard { background: #dbeafe; color: #1e40af; }
+        .decision-priority { background: #fef3c7; color: #92400e; }
+        .decision-escalation { background: #fee2e2; color: #991b1b; }
+
+        .priority-low { background: #d1fae5; color: #065f46; }
+        .priority-medium { background: #dbeafe; color: #1e40af; }
+        .priority-high { background: #fef3c7; color: #92400e; }
+        .priority-critical { background: #fee2e2; color: #991b1b; }
+
+        .metric {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #dc2626;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #10b981;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .rate-limits {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .rate-limit-item {
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .rate-limit-item small {
+            display: block;
+            color: #6b7280;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .rate-limit-item strong {
+            display: block;
+            color: #111827;
+            font-size: 16px;
+        }
+
+        .examples {
+            margin-top: 15px;
+        }
+
+        .example-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #f3f4f6;
+            color: #374151;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            background: #e5e7eb;
+            border-color: #d1d5db;
+        }
+
+        pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Decision Intelligence API</h1>
+            <p class="subtitle">Test your API endpoints directly in the browser</p>
+        </div>
+
+        <div class="grid">
+            <!-- Input Section -->
+            <div class="card">
+                <h2>📝 Test Decision Endpoint</h2>
+                
+                <label>API Key</label>
+                <select id="apiKey">
+                    <option value="sk_test_demo_free_key_12345678901234567890">Free Tier (10 req/min)</option>
+                    <option value="sk_test_demo_starter_key_1234567890123456">Starter Tier (60 req/min)</option>
+                    <option value="sk_test_demo_pro_key_123456789012345678" selected>Pro Tier (300 req/min)</option>
+                </select>
+
+                <label>Customer Message</label>
+                <textarea id="message" placeholder="Enter customer message...">I will contact my lawyer if this is not resolved immediately.</textarea>
+
+                <label>User Plan</label>
+                <select id="userPlan">
+                    <option value="free">Free</option>
+                    <option value="pro">Pro</option>
+                    <option value="enterprise" selected>Enterprise</option>
+                </select>
+
+                <label>Channel</label>
+                <select id="channel">
+                    <option value="email" selected>Email</option>
+                    <option value="chat">Chat</option>
+                    <option value="review">Review</option>
+                    <option value="social">Social</option>
+                </select>
+
+                <button id="submitBtn" onclick="makeDecision()">Make Decision</button>
+
+                <div class="examples">
+                    <label>Quick Examples</label>
+                    <div class="example-btn" onclick="loadExample('legal')">Legal Threat</div>
+                    <div class="example-btn" onclick="loadExample('churn')">Churn Risk</div>
+                    <div class="example-btn" onclick="loadExample('question')">Simple Question</div>
+                    <div class="example-btn" onclick="loadExample('spam')">Spam</div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div>
+                <div class="card" style="margin-bottom: 20px;">
+                    <h2>📊 Usage Stats</h2>
+                    <button onclick="checkUsage()" style="margin-bottom: 15px;">Refresh Usage</button>
+                    <div id="usageStats">Click "Refresh Usage" to see your current usage</div>
+                </div>
+
+                <div class="result">
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchTab('result')">Decision Result</button>
+                        <button class="tab" onclick="switchTab('raw')">Raw JSON</button>
+                        <button class="tab" onclick="switchTab('headers')">Headers</button>
+                    </div>
+
+                    <div id="resultTab" class="tab-content active">
+                        <div id="resultContent">
+                            <div style="text-align: center; padding: 60px 20px; color: #9ca3af;">
+                                <div style="font-size: 48px; margin-bottom: 15px;">🎯</div>
+                                <p>Click "Make Decision" to test the API</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="rawTab" class="tab-content">
+                        <pre id="rawJson">No data yet</pre>
+                    </div>
+
+                    <div id="headersTab" class="tab-content">
+                        <pre id="responseHeaders">No data yet</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        let lastResponse = null;
+        let lastHeaders = null;
+
+        const examples = {
+            legal: {
+                message: "This is unacceptable. I will contact my lawyer if not resolved today.",
+                userPlan: "pro",
+                channel: "email"
+            },
+            churn: {
+                message: "We are very disappointed and considering switching to your competitor.",
+                userPlan: "enterprise",
+                channel: "email"
+            },
+            question: {
+                message: "How do I reset my password? I can't find the link in settings.",
+                userPlan: "free",
+                channel: "chat"
+            },
+            spam: {
+                message: "Click here now! Limited offer! Buy now!",
+                userPlan: "free",
+                channel: "social"
+            }
+        };
+
+        function loadExample(type) {
+            const example = examples[type];
+            document.getElementById('message').value = example.message;
+            document.getElementById('userPlan').value = example.userPlan;
+            document.getElementById('channel').value = example.channel;
+        }
+
+        async function makeDecision() {
+            const apiKey = document.getElementById('apiKey').value;
+            const message = document.getElementById('message').value;
+            const userPlan = document.getElementById('userPlan').value;
+            const channel = document.getElementById('channel').value;
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            document.getElementById('resultContent').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Making decision...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/v1/decision`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        user_plan: userPlan,
+                        channel: channel
+                    })
+                });
+
+                lastHeaders = {};
+                response.headers.forEach((value, key) => {
+                    lastHeaders[key] = value;
+                });
+
+                const data = await response.json();
+                lastResponse = data;
+
+                if (response.ok) {
+                    displaySuccess(data);
+                } else {
+                    displayError(data, response.status);
+                }
+
+                updateRawJson(data);
+                updateHeaders(lastHeaders);
+
+            } catch (error) {
+                displayError({ error: 'network_error', message: error.message }, 0);
+                lastResponse = null;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Make Decision';
+            }
+        }
+
+        function displaySuccess(data) {
+            const decisionClass = `decision-${data.decision.replace('_', '-')}`;
+            const priorityClass = `priority-${data.priority}`;
+
+            document.getElementById('resultContent').innerHTML = `
+                <div class="success">
+                    ✅ Decision made successfully
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <span class="decision-badge ${decisionClass}">${data.decision.replace('_', ' ').toUpperCase()}</span>
+                    <span class="decision-badge ${priorityClass}">${data.priority.toUpperCase()}</span>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Churn Risk</div>
+                    <div class="metric-value">${(data.churn_risk * 100).toFixed(0)}%</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Confidence</div>
+                    <div class="metric-value">${(data.confidence * 100).toFixed(0)}%</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Recommended Action</div>
+                    <p style="margin-top: 8px; color: #374151; line-height: 1.6;">${data.recommended_action}</p>
+                </div>
+
+                ${lastHeaders ? displayRateLimits(lastHeaders) : ''}
+            `;
+        }
+
+        function displayError(data, status) {
+            document.getElementById('resultContent').innerHTML = `
+                <div class="error">
+                    <strong>❌ Error ${status || 'Unknown'}</strong>
+                    <p style="margin-top: 8px;">${data.message || data.detail || 'An error occurred'}</p>
+                    ${data.retry_after ? `<p style="margin-top: 8px;"><strong>Retry after:</strong> ${data.retry_after} seconds</p>` : ''}
+                </div>
+            `;
+        }
+
+        function displayRateLimits(headers) {
+            return `
+                <div style="margin-top: 20px;">
+                    <label>Rate Limits</label>
+                    <div class="rate-limits">
+                        <div class="rate-limit-item">
+                            <small>This Minute</small>
+                            <strong>${headers['x-ratelimit-remaining-minute'] || 'N/A'} / ${headers['x-ratelimit-limit-minute'] || 'N/A'}</strong>
+                        </div>
+                        <div class="rate-limit-item">
+                            <small>Today</small>
+                            <strong>${headers['x-ratelimit-remaining-day'] || 'N/A'} / ${headers['x-ratelimit-limit-day'] || 'N/A'}</strong>
+                        </div>
+                        <div class="rate-limit-item">
+                            <small>Tier</small>
+                            <strong>${headers['x-ratelimit-tier'] || 'N/A'}</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateRawJson(data) {
+            document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
+        }
+
+        function updateHeaders(headers) {
+            document.getElementById('responseHeaders').textContent = JSON.stringify(headers, null, 2);
+        }
+
+        async function checkUsage() {
+            const apiKey = document.getElementById('apiKey').value;
+            
+            document.getElementById('usageStats').innerHTML = `
+                <div class="loading" style="padding: 20px;">
+                    <div class="spinner"></div>
+                    <p>Loading usage stats...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/v1/usage`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const todayPercent = (data.usage.requests_today / data.limits.requests_per_day * 100).toFixed(1);
+                    const monthPercent = (data.usage.requests_this_month / data.limits.requests_per_month * 100).toFixed(1);
+
+                    document.getElementById('usageStats').innerHTML = `
+                        <div style="margin-bottom: 15px;">
+                            <strong>Tier:</strong> ${data.tier}
+                        </div>
+
+                        <div class="metric">
+                            <div class="metric-label">Today's Usage</div>
+                            <div class="metric-value">${data.usage.requests_today} / ${data.limits.requests_per_day}</div>
+                            <div style="margin-top: 5px; color: #6b7280; font-size: 12px;">${todayPercent}% used</div>
+                        </div>
+
+                        <div class="metric">
+                            <div class="metric-label">This Month</div>
+                            <div class="metric-value">${data.usage.requests_this_month} / ${data.limits.requests_per_month}</div>
+                            <div style="margin-top: 5px; color: #6b7280; font-size: 12px;">${monthPercent}% used</div>
+                        </div>
+
+                        <div class="metric">
+                            <div class="metric-label">Estimated Cost</div>
+                            <div class="metric-value">$${data.estimated_cost_this_month.total_cost_usd.toFixed(2)}</div>
+                            ${data.estimated_cost_this_month.overage_cost_usd > 0 ? 
+                                `<div style="margin-top: 5px; color: #dc2626; font-size: 12px;">Overage: $${data.estimated_cost_this_month.overage_cost_usd.toFixed(2)}</div>` : 
+                                ''}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('usageStats').innerHTML = `
+                        <div class="error">${data.message || 'Failed to load usage stats'}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('usageStats').innerHTML = `
+                    <div class="error">Network error: ${error.message}</div>
+                `;
+            }
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+    </script>
+</body>
+</html>

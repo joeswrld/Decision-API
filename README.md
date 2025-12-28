@@ -2,24 +2,46 @@
 
 A production-ready customer message triage system using **rules-first, AI-assisted** decision making.
 
-**AI Provider**: Google Gemini 1.5 Flash
+**AI Provider**: Google Gemini 1.5 Flash  
+**Authentication**: API Key (Bearer tokens)  
+**Rate Limiting**: Multi-tier pricing with usage tracking
 
 ## 🚀 Quick Start
 
 ```bash
 # 1. Get Gemini API key from https://makersuite.google.com/app/apikey
-# 2. Set environment variable
 export GOOGLE_API_KEY="your_key_here"
 
-# 3. Install and run
+# 2. Install and run
 pip install -r requirements.txt
 uvicorn main:app --reload
 
-# 4. Test
-./test_api.sh
+# 3. Use demo API key for testing
+curl -X POST http://localhost:8000/v1/decision \
+  -H "Authorization: Bearer sk_test_demo_pro_key_123456789012345678" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "I will sue you", "user_plan": "enterprise"}'
+
+# 4. Check usage
+curl http://localhost:8000/v1/usage \
+  -H "Authorization: Bearer sk_test_demo_pro_key_123456789012345678"
 ```
 
-**See [GEMINI_SETUP.md](GEMINI_SETUP.md) for detailed setup guide.**
+**See [PAID_API_GUIDE.md](PAID_API_GUIDE.md) for authentication & billing.**  
+**See [GEMINI_SETUP.md](GEMINI_SETUP.md) for AI setup.**
+
+---
+
+## 💰 Pricing Tiers
+
+| Tier | Price/Month | Requests/Min | Requests/Day | Requests/Month |
+|------|-------------|--------------|--------------|----------------|
+| **Free** | $0 | 10 | 100 | 1,000 |
+| **Starter** | $29 | 60 | 5,000 | 100,000 |
+| **Professional** | $99 | 300 | 50,000 | 1,000,000 |
+| **Enterprise** | $499 | 1,000 | 500,000 | 10,000,000 |
+
+Get pricing details: `GET /v1/pricing`
 
 ```
 Request → Rules Engine → AI Layer → Validation → Response
