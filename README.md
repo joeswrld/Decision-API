@@ -2,7 +2,24 @@
 
 A production-ready customer message triage system using **rules-first, AI-assisted** decision making.
 
-## Architecture
+**AI Provider**: Google Gemini 1.5 Flash
+
+## 🚀 Quick Start
+
+```bash
+# 1. Get Gemini API key from https://makersuite.google.com/app/apikey
+# 2. Set environment variable
+export GOOGLE_API_KEY="your_key_here"
+
+# 3. Install and run
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# 4. Test
+./test_api.sh
+```
+
+**See [GEMINI_SETUP.md](GEMINI_SETUP.md) for detailed setup guide.**
 
 ```
 Request → Rules Engine → AI Layer → Validation → Response
@@ -164,57 +181,74 @@ If confidence < 0.4:
 - `standard_response` → `priority_response`
 - Message flagged for manual review
 
-## AI Integration
+## AI Integration - Google Gemini
 
-### Current Setup (Mock)
+### Setup
 
-The AI layer uses a mock implementation for testing. To integrate a real LLM:
+1. **Get API Key**
+   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+   - Copy the key
 
-**OpenAI Example:**
+2. **Set Environment Variable**
+   ```bash
+   # Linux/Mac
+   export GOOGLE_API_KEY="your_api_key_here"
+   
+   # Windows (PowerShell)
+   $env:GOOGLE_API_KEY="your_api_key_here"
+   
+   # Or add to .env file
+   echo "GOOGLE_API_KEY=your_api_key_here" > .env
+   ```
+
+3. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Model Used: Gemini 1.5 Flash
+
+**Why Flash?**
+- ⚡ **Fast**: ~200ms response time
+- 💰 **Cheap**: $0.35 per 1M tokens (input), $1.05 per 1M tokens (output)
+- 🎯 **Accurate**: Good enough for decision logic
+- 📊 **Long Context**: 1M token window (not needed here, but available)
+
+**Alternative: Gemini 1.5 Pro**
+If you need higher accuracy, change in `ai_decision.py`:
 ```python
-# In ai_decision.py, replace call_ai_api():
+model = genai.GenerativeModel(model_name='gemini-1.5-pro')
+```
+- More accurate but slower and 3x more expensive
+- Use for complex edge cases or if Flash quality isn't sufficient
 
-import openai
+### Configuration
 
-async def call_ai_api(prompt: str) -> Optional[str]:
-    try:
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            max_tokens=500,
-            timeout=10
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        logger.error(f"OpenAI API error: {e}")
-        return None
+Edit `config.py` to tune Gemini behavior:
+
+```python
+AI_TEMPERATURE = 0.2      # 0.0-1.0 (lower = more deterministic)
+AI_MAX_TOKENS = 500       # Response length limit
+AI_TIMEOUT_SECONDS = 10   # API timeout
 ```
 
-**Anthropic Claude Example:**
-```python
-import anthropic
+### Testing Without API Key
 
-async def call_ai_api(prompt: str) -> Optional[str]:
-    client = anthropic.AsyncAnthropic(api_key="your-key")
-    try:
-        message = await client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=500,
-            temperature=0.2,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return message.content[0].text
-    except Exception as e:
-        logger.error(f"Anthropic API error: {e}")
-        return None
+The API will gracefully fallback to rule-based decisions if:
+- `GOOGLE_API_KEY` not set
+- Gemini API is down
+- Rate limits hit
+- Any other error
+
+**Test fallback behavior:**
+```bash
+# Don't set API key
+unset GOOGLE_API_KEY
+
+# Run API - will use fallback logic
+uvicorn main:app --reload
 ```
-
-### AI Settings (config.py)
-
-- **Temperature**: 0.2 (low = deterministic)
-- **Timeout**: 10 seconds
-- **Max Tokens**: 500
 
 ## Error Handling
 
